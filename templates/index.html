@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+
+  <title>ORBWEAVER</title>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Click Lines</title>
+  <style>
+    #container {
+      position: relative;
+      display: inline-block;
+    }
+
+    #myImage {
+      display: block;
+    }
+
+    .line {
+      position: absolute;
+      background-color: red;
+    }
+
+    .vertical {
+      width: 2px;
+    }
+
+    .horizontal {
+      height: 2px;
+    }
+
+    #log {
+      font-family: Arial, Helvetica, sans-serif;
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    #log td,
+    #log th {
+      border: 1px solid #122a14;
+    }
+
+    #log tr:nth-child(even) {
+      background-color: grey;
+    }
+
+    #log tr {
+      background-color: lightgray;
+    }
+
+    #log th {
+      text-align: left;
+      background-color: black;
+      color: white;
+    }
+
+    /* The Modal (background) */
+    .modal {
+      display: none;
+      /* Hidden by default */
+      position: fixed;
+      /* Stay in place */
+      z-index: 1;
+      /* Sit on top */
+      padding-top: 90vh;
+      /* Location of the box */
+      right: 0;
+      top: 0;
+      width: 20%;
+      /* Full width */
+      height: 100%;
+      /* Full height */
+      overflow: auto;
+      /* Enable scroll if needed */
+    }
+
+    /* Modal Content */
+    .modal-content {
+      background-color: rgb(49, 252, 49);
+      margin: auto;
+      padding: 10px;
+      border-radius: 5px 0px 0px 5px;
+    }
+  </style>
+</head>
+
+<body style="background-color: #9572BB;">
+  <div class="header">
+    <img id="splash" src="{{url_for('static', filename='orbweaver_header.png')}}" align="middle" style="
+      display: block;
+      min-width:100%;
+      max-width:100%;
+      height: auto;" />
+  </div>
+  <div class="agent" style="padding: 5px;" hx-get="/get-agent-status" hx-swap="innerHTML" hx-trigger="every 5s">
+    <table style="margin-left: auto;
+margin-right: auto; background-color: #b298cf; border-width: 2px; border-color: #122a14; border-style: solid;">
+      <tr>
+        <th>status</th>
+        <th>last callback</th>
+      </tr>
+      <tr>
+        <td><img src="/static/pause.png" style="height: 20px; width:20px" /></td>
+        <td>N/A</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="screen_log" style="height: 71vh; display:flex;">
+    <div style="width: 80vw; 
+      background-color: rgb(24, 38, 56);
+      display: flex;
+      align-items: center;
+      justify-content: center;">
+      <div id="container">
+        <img src="/static/wait_screen.png" style="max-width: 80vw; 
+          max-height: 71vh;
+          aspect-ratio: initial;" title="screenshot" hx-get="/update-image" hx-swap="outerHTML"
+          hx-trigger="every 5s" />
+      </div>
+    </div>
+    <div style="width: 38vw;padding: 5px;">
+      <div class="log" style="height: 25vh; 
+      background-color: rgb(52, 55, 59); overflow: auto">
+        <div class="log_table" hx-get="/get-queue" hx-swap="innerHTML" hx-trigger="every 0.5s">
+          <table id="log">
+            <thead style="position: sticky;
+              top: 0;">
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">Queue time</th>
+                <th scope="col">Command</th>
+              </tr>
+            </thead>
+          </table>
+        </div>
+      </div>
+      <div class="mouse" style="padding: 5px;
+          margin-left: auto;
+          margin-right: auto;">
+        <img src="{{url_for('static', filename='mouse_layout.jpg')}}" style="height: 18vh; " title="layout" />
+        <br>
+        <button id="btnDoubbleClick">Double click</button>
+        <button id="btnLeftClick">Left click</button>
+        <button id="btnRightClick">Right click</button>
+      </div>
+      <div class="text" style="padding: 5px;">
+        <iframe name="hiddenFrame" width="0" height="0" border="0" style="display: none;"></iframe>
+
+        <form id="submit_text" action="/send_text" method="POST" target="hiddenFrame" onsubmit="command_queued()">
+          <textarea id="textInput" name="send_text" style=" width:100%; height:15vh;"
+            placeholder="Type something here..."></textarea><br><br>
+          <button type="submit">Send text as keystrokes + [ENTER]</button>
+        </form>
+      </div>
+      <!-- The Modal -->
+      <div id="myModal" class="modal">
+        <div class="modal-content">
+          <p>[+] Command queued</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer" style="padding: 5px;">
+    Footer info and cool stuffs
+  </div>
+
+  <script>
+    let clickCoordinates = null;
+
+    document.getElementById('container').addEventListener('click', function (event) {
+      const container = document.getElementById('container');
+
+      // Get the image's bounding box
+      const rect = this.getBoundingClientRect();
+
+      // Calculate the click position relative to the image
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+
+      // make coordinates relative
+      const relative_x = (x / (document.getElementById('screenshot').width / 100))
+      const relative_y = (y / (document.getElementById('screenshot').height / 100))
+      // Save the coordinates for submission
+      clickCoordinates = { relative_x, relative_y };
+
+      // Clear previous lines
+      const oldLines = document.querySelectorAll('.line');
+      oldLines.forEach(line => line.remove());
+
+      // Create a vertical line
+      const verticalLine = document.createElement('div');
+      verticalLine.classList.add('line', 'vertical');
+      verticalLine.style.height = rect.height + 'px';
+      verticalLine.style.left = x + 'px';
+      verticalLine.style.top = '0px';
+
+      // Create a horizontal line
+      const horizontalLine = document.createElement('div');
+      horizontalLine.classList.add('line', 'horizontal');
+      horizontalLine.style.width = rect.width + 'px';
+      horizontalLine.style.left = '0px';
+      horizontalLine.style.top = y + 'px';
+
+      // Append the lines to the container
+      container.appendChild(verticalLine);
+      container.appendChild(horizontalLine);
+    });
+
+
+    document.getElementById('btnLeftClick').addEventListener('click', function () {
+      command_queued();
+      if (clickCoordinates) {
+        // POST the coordinates to a server
+        fetch('/send_click', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(["left_click", clickCoordinates]),
+        })
+          .then(response => response.json())
+          .then(data => {
+            console.log('Coordinates submitted successfully!');
+          })
+          .catch((error) => {
+            console.error('Error:', error);
+          });
+      }
+    });
+
+    document.getElementById('btnRightClick').addEventListener('click', function () {
+      command_queued();
+      if (clickCoordinates) {
+        // POST the coordinates to a server
+        fetch('/send_click', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(["right_click", clickCoordinates]),
+        })
+          .then(response => response.json())
+          .then(data => {
+            console.log('Coordinates submitted successfully!');
+          })
+          .catch((error) => {
+            console.error('Error:', error);
+          });
+      }
+    });
+
+    document.getElementById('btnDoubbleClick').addEventListener('click', function () {
+      command_queued();
+      if (clickCoordinates) {
+        // POST the coordinates to a server
+        fetch('/send_click', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(["double_click", clickCoordinates]),
+        })
+          .then(response => response.json())
+          .then(data => {
+            console.log('Coordinates submitted successfully!');
+          })
+          .catch((error) => {
+            console.error('Error:', error);
+          });
+      }
+    });
+
+    // Get the modal
+    var modal = document.getElementById("myModal");
+
+    // When the user clicks the button, open the modal 
+    function command_queued() {
+      modal.style.display = "block";
+      // Wait for 1 second (1000 milliseconds)
+      setTimeout(() => {
+        modal.style.display = "none";
+      }, 1000);
+    }
+  </script>
+
+
+
+</body>
+
+</html>

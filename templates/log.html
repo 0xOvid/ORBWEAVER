@@ -1,0 +1,23 @@
+<table id="log">
+    <thead style="position: sticky;
+        top: 0;">
+        <tr>
+            <th scope="col">#</th>
+            <th scope="col">Queue time</th>
+            <th scope="col">Command</th>
+        </tr>
+    </thead>
+    <tbody hx-target="closest tr" hx-swap="outerHTML swap:0.5s">
+        {%for item in queue%}
+        {% if item.executed %}
+        <tr style="background-color: green">
+            {% else %}
+        <tr>
+            {% endif %}
+            <td>{{item.uid}}</td>
+            <td>{{item.timestamp}}</td>
+            <td>{{item.command}}</td>
+        </tr>
+        {%endfor%}
+    </tbody>
+</table>
