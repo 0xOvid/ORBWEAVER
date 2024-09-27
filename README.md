@@ -7,11 +7,7 @@ Provide the capability to spy on user sessions and control their actions without
 # TODO
 - create install instructions
 - create compile instructions
-- finsih github setup
-- create blog post
 - do field testing
-- create demo of final PoC
-- release and scrub github history
 ## Agent
 - Provide commandline options for where to connect to
 - Clean up code base
@@ -19,8 +15,5 @@ Provide the capability to spy on user sessions and control their actions without
 
 ## Server
 - Add security: checking fo files that are uploaded, login, and auth requirements for interfaces and APIs
-- Add CSS
-- Clean up web interface
-- Add functionality to keep track of agent: last call back time, color to indicate status, hsotname, username, maybe process info (see sidewinder)
 
 
